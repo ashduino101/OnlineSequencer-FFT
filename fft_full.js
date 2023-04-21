@@ -1,8 +1,10 @@
 var resolution = 8; // how many times to subdivide each 16th note, 4 means 64th notes
 var fftSize = 2048; // must be power of 2
-var maxNotes = 1000; // maximum number of notes to add for each interval
-var minIntensity = 110; // minimum volume for note to be added (0-255)
+var maxNotes = 1024; // maximum number of notes to add for each interval
+var minIntensity = 108; // minimum volume for note to be added (0-255)
 var repaintInterval = 100; // interval to repaint canvas
+
+autoScroll = 2;
 
 instMgr.ensureLoaded(13);
 instMgr.ensureLoaded(14);
@@ -76,73 +78,59 @@ el.on('change', function(e){
       setInitialInstrumentVolume(14, 1.25);
       setDetune(14, -50);
 
-      var time = 0;
+      let time = 0;
       audioSourceL.start(0);
       audioSourceR.start(0);
-      setInterval(function(){
-        // LEFT CHANNEL ------------------------
-        analyserL.getByteFrequencyData(dataArrayL);
 
-        var fL = []; // [index, amplitude]
-        for (var i = 1; i < dataArrayL.length - 1; i++) {
-          var isPeak = dataArrayL[i] >= dataArrayL[i - 1] && dataArrayL[i] >= dataArrayL[i + 1];
+      function shuffle(a) {
+        let j, x;
+        for (let i = a.length - 1; i > 0; i--) {
+          j = Math.floor(Math.random() * (i + 1));
+          x = a[i];
+          a[i] = a[j];
+          a[j] = x;
+        }
+        return a;
+      }
+
+      function processChannel(analyser, dataArray, inst, hsInst) {
+        analyser.getByteFrequencyData(dataArray);
+
+        let f = [];  // [index, amplitude]
+        for (let i = 1; i < dataArray.length - 1; i++) {
+          let isPeak = dataArray[i] >= dataArray[i - 1] && dataArray[i] >= dataArray[i + 1];
           if (isPeak) {
-            fL.push([i, dataArrayL[i]]);
+            f.push([i, dataArray[i]]);
           }
         }
-        fL.sort(function (a, b) {
-          return b[1] - a[1]
-        });
-        var i = 0;
-        var added = 0;
-        var s = "";
+        f = shuffle(f);
+        let i = 0;
+        let added = 0;
+        let column = {};
         while (added < maxNotes) {
-          var frequency = fL[i][0] * context.sampleRate / analyserL.fftSize;
-          var rawNote = Math.round((piano.length * Math.log(2) + 12 * Math.log(55 / frequency) + Math.log(4)) / (Math.log(2)) * 2) / 2;
-          var shouldUseDt = (rawNote % 1 === 0.5);
-          var note = piano[shouldUseDt ? Math.floor(rawNote) : Math.round(rawNote)];
-          if (note != undefined && fL[i][1] > minIntensity) {
-            song.addNote(new Note(song, note, time / resolution, 1 / resolution + (1 / resolution * 0.1), shouldUseDt ? 15 : 13, (fL[i][1] - minIntensity) / (255 - minIntensity)));
+          let frequency = f[i][0] * context.sampleRate / analyser.fftSize;
+          let rawNote = Math.round((piano.length * Math.log(2) + 12 * Math.log(55 / frequency) + Math.log(4)) / (Math.log(2)) * 2) / 2;
+          let shouldUseDt = (rawNote % 1 === 0.5);
+          let noteIndex = shouldUseDt ? Math.floor(rawNote) : Math.round(rawNote);
+          if (column[[noteIndex, shouldUseDt]]) continue;
+          let note = piano[noteIndex];
+          let volume = (f[i][1] - minIntensity) / (255 - minIntensity);
+          let n = new Note(song, note, time / resolution, 1 / resolution + (1 / resolution * 0.1), shouldUseDt ? hsInst : inst, volume);
+          if (note != undefined && f[i][1] > minIntensity) {
+            song.addNote(n);
+            column[noteIndex] = shouldUseDt;
             added++;
-            s += "[" + note + " " + fL[i][1] + "] ";
           }
           i++;
-          if (i >= fL.length) {
+          if (i >= f.length) {
             break;
           }
         }
+      }
 
-        // RIGHT CHANNEL -----------------------
-        analyserR.getByteFrequencyData(dataArrayR);
-
-        var fR = []; // [index, amplitude]
-        for (var i = 1; i < dataArrayR.length - 1; i++) {
-          var isPeak = dataArrayR[i] >= dataArrayR[i - 1] && dataArrayR[i] >= dataArrayR[i + 1];
-          if (isPeak) {
-            fR.push([i, dataArrayR[i]]);
-          }
-        }
-        fR.sort(function (a, b) {
-          return b[1] - a[1]
-        });
-        var i = 0;
-        var added = 0;
-        var s = "";
-        while (added < maxNotes) {
-          var frequency = fR[i][0] * context.sampleRate / analyserR.fftSize;
-          var rawNote = Math.round((piano.length * Math.log(2) + 12 * Math.log(55 / frequency) + Math.log(4)) / (Math.log(2)) * 2) / 2;
-          var shouldUseDt = (rawNote % 1 === 0.5);
-          var note = piano[shouldUseDt ? Math.floor(rawNote) : Math.round(rawNote)];
-          if (note != undefined && fR[i][1] > minIntensity) {
-            song.addNote(new Note(song, note, time / resolution, 1 / resolution + (1 / resolution * 0.1), shouldUseDt ? 14 : 16, (fR[i][1] - minIntensity) / (255 - minIntensity)));
-            added++;
-            s += "[" + note + " " + fR[i][1] + "] ";
-          }
-          i++;
-          if (i >= fR.length) {
-            break;
-          }
-        }
+      setInterval(function() {
+        processChannel(analyserL, dataArrayL, 13, 15);
+        processChannel(analyserR, dataArrayR, 16, 14);
 
         time++;
       }, song.sleepTime / resolution);
