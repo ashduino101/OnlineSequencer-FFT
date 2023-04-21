@@ -5,10 +5,10 @@ var minIntensity = 116; // minimum volume for note to be added (0-255)
 var repaintInterval = 100; // interval to repaint canvas
 const octaveOffset = 4; // octave increase for high frequencies
 
-loadInstrument(13);
-loadInstrument(14);
-loadInstrument(15);
-loadInstrument(16);
+instMgr.ensureLoaded(13);
+instMgr.ensureLoaded(14);
+instMgr.ensureLoaded(15);
+instMgr.ensureLoaded(16);
 var el = $('<input type="file" accept="audio/*">');
 $(document.body).append(el);
 

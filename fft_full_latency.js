@@ -5,11 +5,11 @@ const minIntensity = 108;  // Minimum volume for note to be added (0-255)
 const repaintInterval = 100;  // Interval to repaint canvas
 const playAudio = false;  // Whether to play the original audio while processing
 
-autoScroll = '2'  // Disable autoscroll to prevent avoidable lag
-loadInstrument(13);
-loadInstrument(14);
-loadInstrument(15);
-loadInstrument(16);
+autoScroll = 2  // Disable autoscroll to prevent avoidable lag
+instMgr.ensureLoaded(13);
+instMgr.ensureLoaded(14);
+instMgr.ensureLoaded(15);
+instMgr.ensureLoaded(16);
 var el = $('<input type="file" accept="audio/*">');
 $(document.body).append(el);
 

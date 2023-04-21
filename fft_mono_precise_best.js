@@ -3,8 +3,8 @@ var fftSize = 2048; // must be power of 2
 var maxNotes = 1000; // maximum number of notes to add for each interval
 var minIntensity = 100; // minimum volume for note to be added (0-255)
 
-loadInstrument(13);
-loadInstrument(16);
+instMgr.ensureLoaded(13);
+instMgr.ensureLoaded(16);
 
 var el = $('<input type="file" accept="audio/*">');
 $(document.body).append(el);
